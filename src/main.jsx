@@ -1,14 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom' // Changed to HashRouter
 import App from './App.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {/* ADD THE BASENAME RIGHT HERE */}
-    <BrowserRouter basename="/Learnova-Ai/">
+    {/* HashRouter handles the /Learnova-Ai/ path automatically! */}
+    <HashRouter> 
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>,
 )
