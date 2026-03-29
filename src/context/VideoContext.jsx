@@ -1,24 +1,27 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
-const VideoContext = createContext();
+const VideoContext = createContext(null); // Initialize with null to detect missing Provider
 
 export const VideoProvider = ({ children }) => {
   const [watchHistory, setWatchHistory] = useState(() => {
-    const saved = localStorage.getItem('learnova_history');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('learnova_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
   });
 
   const [currentVideo, setCurrentVideo] = useState(() => {
-    const saved = localStorage.getItem('learnova_current_video');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('learnova_current_video');
+      // 🛡️ CRITICAL FIX: Ensure we return null if the data is corrupt or missing
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
   });
 
-  // Save to local storage whenever history changes
   useEffect(() => {
     localStorage.setItem('learnova_history', JSON.stringify(watchHistory));
   }, [watchHistory]);
 
-  // Save the current playing video as persistence
   useEffect(() => {
     if (currentVideo) {
       localStorage.setItem('learnova_current_video', JSON.stringify(currentVideo));
@@ -28,8 +31,8 @@ export const VideoProvider = ({ children }) => {
   }, [currentVideo]);
 
   const addToHistory = (video) => {
+    if (!video) return;
     setWatchHistory(prev => {
-      // Prevent duplicates in history
       if (prev.find(v => v.id === video.id)) return prev;
       return [video, ...prev];
     });
@@ -38,11 +41,35 @@ export const VideoProvider = ({ children }) => {
   const clearHistory = () => setWatchHistory([]);
   const clearCurrentVideo = () => setCurrentVideo(null);
 
+  // 🛡️ Always provide a fallback value
+  const value = {
+    watchHistory: watchHistory || [],
+    currentVideo: currentVideo || null,
+    addToHistory,
+    clearHistory,
+    setCurrentVideo,
+    clearCurrentVideo
+  };
+
   return (
-    <VideoContext.Provider value={{ watchHistory, addToHistory, clearHistory, currentVideo, setCurrentVideo, clearCurrentVideo }}>
+    <VideoContext.Provider value={value}>
       {children}
     </VideoContext.Provider>
   );
 };
 
-export const useVideo = () => useContext(VideoContext);
+// 🛡️ SAFETY HOOK: This prevents the "undefined" crash
+export const useVideo = () => {
+  const context = useContext(VideoContext);
+  if (context === undefined || context === null) {
+    return {
+      watchHistory: [],
+      currentVideo: null,
+      addToHistory: () => {},
+      clearHistory: () => {},
+      setCurrentVideo: () => {},
+      clearCurrentVideo: () => {}
+    };
+  }
+  return context;
+};
