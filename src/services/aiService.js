@@ -1,9 +1,9 @@
 // src/services/aiService.js
 
-// 🚨 PASTE YOUR NEW API KEY HERE
+// 🚨 ENSURE THIS KEY IS FRESH FROM GOOGLE AI STUDIO
 const GEMINI_KEY = "AIzaSyC2UM7JO6BKQKcD1Eg02TzfLAdJken_Qbs"; 
 
-// The modern Google AI Endpoint
+// 🛡️ THE BULLETPROOF URL
 const GOOGLE_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
 export const generateQuiz = async (topic, difficulty) => {
@@ -20,15 +20,17 @@ export const generateQuiz = async (topic, difficulty) => {
       })
     });
 
+    if (!response.ok) throw new Error('API Reject');
+
     const data = await response.json();
     let text = data.candidates[0].content.parts[0].text;
     
-    // Clean JSON in case Gemini adds markdown backticks
+    // Safety strip for markdown
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(text);
     return { questions: parsed.questions || [] };
   } catch (error) {
-    console.error("Quiz Gen Error:", error);
+    console.error("Quiz Error:", error);
     throw new Error("AI Engine failed to generate the test.");
   }
 };
@@ -39,15 +41,21 @@ export const chatWithGemini = async ({ prompt, mode, language }) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Mode: ${mode}. Language: ${language}. User: ${prompt}` }] }]
+        contents: [{ parts: [{ text: `System: ${mode} in ${language}. User: ${prompt}` }] }]
       })
     });
 
-    if (!response.ok) throw new Error('Gemini Link Failed');
+    if (!response.ok) throw new Error('Link Failed');
 
     const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    return { text };
+    
+    // 🛡️ DYNAMIC EXTRACTION PATH
+    if (data.candidates && data.candidates[0].content) {
+      const text = data.candidates[0].content.parts[0].text;
+      return { text };
+    }
+    
+    throw new Error('Malformed Response');
   } catch (error) {
     console.error("Chat Error:", error);
     return { text: "Neural Link interrupted. Please verify API configuration." };
